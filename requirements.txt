@@ -1,0 +1,23 @@
+# FlowUs 底层依赖
+httpx==0.25.2
+python-dotenv==1.0.0
+mcp>=1.28.0
+
+# Web UI
+fastapi>=0.100.0
+uvicorn>=0.23.0
+markdown>=3.4.0
+python-multipart>=0.0.6
+sse-starlette>=1.6.0
+
+# Agent 框架
+hello-agents==1.0.0
+
+# 周报智能体
+openpyxl>=3.1.0
+python-docx>=1.1.0
+
+# 测试
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+

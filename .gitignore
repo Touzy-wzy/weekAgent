@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 环境变量与密钥（含 API Key、OAuth Token，禁止提交）
+.env
+.flowus_token.json
+
+# 运行时生成的数据
+data/drafts/
+data/sessions/
+data/recipients.json
+memory/
+*.log
+
+# 生成的周报内容
+flowus_content_*.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
