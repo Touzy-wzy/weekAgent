@@ -13,6 +13,8 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -26,6 +28,93 @@ def _resolve_agently_cli() -> Optional[str]:
     return shutil.which("agently-cli")
 
 
+def _get_drafts_dir() -> Path:
+    """获取周报草稿目录"""
+    # 从当前文件位置推算项目根目录：week_agent/agent/tools/ -> 项目根
+    project_root = Path(__file__).resolve().parents[3]
+    return project_root / "data" / "drafts"
+
+
+def _list_available_attachments() -> str:
+    """列出 drafts 目录下可用的 xlsx 文件，供 LLM 选择"""
+    drafts = _get_drafts_dir()
+    if not drafts.exists():
+        return f"  (目录不存在: {drafts})"
+    files = sorted(drafts.glob("*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not files:
+        return f"  (目录 {drafts} 下无 xlsx 文件)"
+    lines = [f"  - {f.name}  ({f.stat().st_size // 1024} KB, {datetime.fromtimestamp(f.stat().st_mtime).strftime('%Y-%m-%d %H:%M')})" for f in files[:10]]
+    return "\n".join(lines)
+
+
+def _resolve_attachment(attachment: str) -> Optional[Path]:
+    """模糊匹配附件路径
+
+    支持的场景：
+    - LLM 传了文件名片段（如 "28.xlsx"、"周礼"）
+    - LLM 传了相对文件名（如 "工作周报-周礼-2026.7.28.xlsx"）
+
+    Returns:
+        匹配到的完整 Path，或 None
+    """
+    att = attachment.strip()
+    drafts = _get_drafts_dir()
+
+    # 1. 先尝试直接作为路径解析
+    p = Path(att)
+    if p.exists():
+        return p
+
+    # 2. 在 drafts 目录下查找
+    if not drafts.exists():
+        return None
+
+    # 2a. 精确文件名匹配
+    direct = drafts / att
+    if direct.exists():
+        return direct
+
+    # 2b. 模糊匹配：提取关键片段（日期、姓名）
+    files = list(drafts.glob("*.xlsx"))
+    if not files:
+        return None
+
+    # 提取 attachment 中的关键信息
+    att_lower = att.lower()
+
+    # 尝试匹配日期片段（如 "28" -> "2026.7.28"）
+    import re
+    date_match = re.search(r'(\d{1,2})\.xlsx', att)
+    date_day = date_match.group(1) if date_match else None
+
+    for f in files:
+        fname = f.name.lower()
+        # 精确文件名包含
+        if att_lower in fname:
+            return f
+        # 日期片段匹配（如 "28.xlsx" 匹配 "...2026.7.28.xlsx"）
+        if date_day and f".{date_day}.xlsx" in fname:
+            return f
+        # 日期片段匹配（如 "28.xlsx" 匹配 "...7.28.xlsx"）
+        if date_day and f"{date_day}.xlsx" in fname and not fname.endswith(f"-{date_day}.xlsx"):
+            # 确保不是误匹配，优先最近修改的
+            pass
+
+    # 2c. 按修改时间排序，如果有多个匹配取最新的
+    matches = []
+    for f in files:
+        fname = f.name.lower()
+        if att_lower in fname:
+            matches.append(f)
+        elif date_day and f".{date_day}.xlsx" in fname:
+            matches.append(f)
+
+    if matches:
+        return sorted(matches, key=lambda f: f.stat().st_mtime, reverse=True)[0]
+
+    return None
+
+
 def _run_agently_send(
     to: str,
     subject: str,
@@ -33,11 +122,17 @@ def _run_agently_send(
     attachment: str = "",
     confirmation_token: str = "",
     cwd: Optional[str] = None,
+    temp_attachment: Optional[Path] = None,
+    body_file: Optional[Path] = None,
 ) -> dict:
     """调用 agently-cli 发送邮件，返回解析后的 JSON 响应
 
     Args:
         cwd: 工作目录（附件路径需相对此目录）
+        temp_attachment: 临时附件路径（英文名，避免中文编码问题）。
+            如果提供，则使用此路径作为附件，忽略 attachment 参数。
+        body_file: body 文件路径（相对 cwd）。
+            如果提供，用 --body-file 替代 --body，避免长 body/换行符破坏命令行解析。
 
     Raises:
         RuntimeError: 命令执行失败
@@ -51,23 +146,45 @@ def _run_agently_send(
     cmd = [cli_exe, "message", "+send"]
     for t in to_list:
         cmd.extend(["--to", t])
-    cmd.extend(["--subject", subject, "--body", body])
+    cmd.extend(["--subject", subject])
 
-    if attachment:
-        # agently-cli 要求相对路径，若传入绝对路径则转换为相对 cwd 的路径
+    # body 处理：优先用 --body-file（避免长 body/换行符/特殊字符破坏命令行解析）
+    if body_file and body_file.exists():
+        # body_file 应该是相对 cwd 的路径
+        try:
+            rel_body = body_file.relative_to(cwd) if cwd else body_file.name
+            cmd.extend(["--body-file", str(rel_body)])
+            print(f"   [debug] body 参数: --body-file {rel_body}")
+        except ValueError:
+            cmd.extend(["--body-file", body_file.name])
+            print(f"   [debug] body 参数: --body-file {body_file.name}")
+    else:
+        cmd.extend(["--body", body])
+        print(f"   [debug] body 参数: --body (len={len(body)})")
+
+    # 附件处理：优先使用临时英文文件名（避免中文编码问题）
+    if temp_attachment and temp_attachment.exists():
+        # 临时文件已在 cwd 下，用相对文件名
+        att_arg = temp_attachment.name
+        cmd.extend(["--attachment", att_arg])
+        print(f"   [debug] 附件参数: {att_arg}")
+    elif attachment:
+        att_arg = attachment
         if cwd:
             att_path = Path(attachment)
             try:
                 rel = att_path.relative_to(cwd)
-                cmd.extend(["--attachment", str(rel)])
+                att_arg = str(rel)
             except ValueError:
-                # 不在 cwd 子树内，用文件名（依赖 cwd 设置）
-                cmd.extend(["--attachment", att_path.name])
-        else:
-            cmd.extend(["--attachment", attachment])
+                att_arg = att_path.name
+        cmd.extend(["--attachment", att_arg])
+        print(f"   [debug] 附件参数(原始): {att_arg}")
 
     if confirmation_token:
         cmd.extend(["--confirmation-token", confirmation_token])
+
+    # 简化调试日志：只打印参数数量和关键参数
+    print(f"   [debug] CMD 参数数量: {len(cmd)}, CWD: {cwd}")
 
     result = subprocess.run(
         cmd,
@@ -75,13 +192,18 @@ def _run_agently_send(
         text=True,
         timeout=60,
         cwd=cwd,
+        encoding="utf-8",
     )
 
     if result.returncode != 0:
-        raise RuntimeError(f"agently-cli failed: {result.stderr.strip()}")
+        raise RuntimeError(f"agently-cli failed (code={result.returncode}): {result.stderr.strip()}")
 
     try:
-        return json.loads(result.stdout)
+        resp = json.loads(result.stdout)
+        summary = resp.get("data", {}).get("summary", {})
+        if summary:
+            print(f"   [debug] summary: attachments={summary.get('attachment_count')}, subject={summary.get('subject', '')[:30]}")
+        return resp
     except json.JSONDecodeError as e:
         raise RuntimeError(f"agently-cli 返回非 JSON: {result.stdout[:200]}")
 
@@ -163,49 +285,107 @@ class AgentlySendMailTool(Tool):
         if attachment:
             print(f"   Attachment: {attachment}")
 
-        # 确定工作目录：附件所在目录（agently-cli 要求附件为相对路径）
-        cwd = None
+        # 解析附件路径（支持模糊匹配）
+        resolved_att_path = None
         if attachment:
             att_path = Path(attachment)
             if att_path.exists():
-                cwd = str(att_path.parent)
-                print(f"   CWD (for relative attachment): {cwd}")
+                resolved_att_path = att_path
             else:
-                print(f"   ⚠️ 附件文件不存在: {attachment}，将尝试继续发送")
+                # 附件不存在，尝试在 drafts 目录模糊匹配
+                resolved = _resolve_attachment(attachment)
+                if resolved:
+                    resolved_att_path = resolved
+                    print(f"   ✅ 模糊匹配到附件: {resolved_att_path.name}")
+                else:
+                    # 列出可用文件，帮助 LLM 选择正确路径
+                    available = _list_available_attachments()
+                    return ToolResponse.error(
+                        code=ToolErrorCode.INVALID_PARAM,
+                        message=(
+                            f"附件文件不存在: {attachment}\n"
+                            f"请使用 fill_weekly_excel 工具返回的完整 xlsx_path。\n"
+                            f"可用文件列表:\n{available}"
+                        ),
+                    )
+
+        # 关键修复：将附件和body都放到临时目录
+        # 1. body 用 --body-file 传递，避免长 body/换行符/特殊字符破坏命令行解析
+        # 2. 附件复制到临时目录，保留中文名，失败回退英文名
+        temp_dir = Path(tempfile.mkdtemp(prefix="agently_mail_"))
+        cwd = str(temp_dir)
+
+        # 写入 body 文件（UTF-8）
+        body_file = temp_dir / "body.html"
+        body_file.write_text(body, encoding="utf-8")
+        print(f"   📝 body 已写入临时文件: body.html ({len(body)} chars)")
+
+        temp_att_path = None
+        temp_att_en = None
+        if resolved_att_path:
+            original_name = resolved_att_path.name
+            temp_att_cn = temp_dir / original_name
+            temp_att_en = temp_dir / "weekly_report.xlsx"
+            shutil.copy2(resolved_att_path, temp_att_cn)
+            print(f"   📎 附件已复制到临时目录: {original_name}")
+            temp_att_path = temp_att_cn
 
         try:
             # 阶段 1：第一次调用，获取 confirmation_token
-            print(f"   [1/2] 预提交邮件，获取确认令牌...")
+            print(f"   [1/2] 预提交邮件，获取确认令牌(附件: {temp_att_path.name if temp_att_path else '无'})...")
             resp1 = _run_agently_send(
                 to=to,
                 subject=subject,
                 body=body,
-                attachment=attachment,
+                attachment="",
                 confirmation_token="",
                 cwd=cwd,
+                temp_attachment=temp_att_path,
+                body_file=body_file,
             )
 
             data1 = resp1.get("data", {})
+            summary1 = data1.get("summary", {})
+            att_count1 = summary1.get("attachment_count", 0)
+
+            # 降级检查：如果中文名未被识别(attachments=0)，回退到英文名重试
+            if temp_att_path and att_count1 == 0 and data1.get("confirmation_required"):
+                print(f"   ⚠️ 中文名未被识别(attachments=0)，回退到英文名重试...")
+                shutil.copy2(resolved_att_path, temp_att_en)
+                temp_att_path = temp_att_en
+                resp1 = _run_agently_send(
+                    to=to,
+                    subject=subject,
+                    body=body,
+                    attachment="",
+                    confirmation_token="",
+                    cwd=cwd,
+                    temp_attachment=temp_att_path,
+                    body_file=body_file,
+                )
+                data1 = resp1.get("data", {})
+                summary1 = data1.get("summary", {})
+                att_count1 = summary1.get("attachment_count", 0)
+
             if not data1.get("confirmation_required"):
-                # 不需要确认，可能已直接发送
                 if data1.get("queued") or data1.get("sent"):
                     print(f"  [OK] Mail sent directly (no confirmation needed)")
+                    self._cleanup_temp(temp_dir)
                     return ToolResponse.success(
                         text=self._format_success(to, subject, "Sent"),
                         data={"queued": True, "to": to, "subject": subject},
                     )
-                # 异常响应
                 raise RuntimeError(
                     f"Unexpected response: {data1.get('message', resp1)}"
                 )
 
             token = data1.get("confirmation_token", "")
-            summary = data1.get("summary", {})
+            summary = summary1
             if not token:
                 raise RuntimeError(f"No confirmation_token in response: {data1}")
 
             print(f"   [1/2] Got token: {token[:20]}...")
-            print(f"         Summary: to={summary.get('to')}, subject={summary.get('subject')}, attachments={summary.get('attachment_count')}")
+            print(f"         Summary: attachments={summary.get('attachment_count')}")
 
             # 阶段 2：第二次调用，用 token 真正发送
             print(f"   [2/2] 提交确认令牌，发送邮件...")
@@ -213,48 +393,78 @@ class AgentlySendMailTool(Tool):
                 to=to,
                 subject=subject,
                 body=body,
-                attachment=attachment,
+                attachment="",
                 confirmation_token=token,
                 cwd=cwd,
+                temp_attachment=temp_att_path,
+                body_file=body_file,
             )
 
             data2 = resp2.get("data", {})
-            if data2.get("queued") or data2.get("sent") or resp2.get("ok"):
-                print(f"  [OK] Mail sent successfully")
+            # 严格判断发送成功：阶段 2 不应再有 confirmation_required，且 queued/sent 为 True
+            # 注意：不能用 resp2.get("ok") 判断——ok:true 只表示请求被接受，不代表邮件已发送
+            if data2.get("confirmation_required"):
+                # 阶段 2 仍要求确认 = token 无效/过期，邮件未发送
+                raise RuntimeError(
+                    f"确认令牌无效，邮件未发送: {data2.get('message', data2)}"
+                )
+            if data2.get("queued") or data2.get("sent"):
+                from_email = summary.get("from", "unknown")
+                print(f"  [OK] Mail queued successfully")
+                self._cleanup_temp(temp_dir)
                 return ToolResponse.success(
-                    text=self._format_success(to, subject, "Sent"),
+                    text=self._format_success(to, subject, "Sent", from_email, summary.get("attachment_count", 0)),
                     data={
                         "queued": True,
                         "to": to,
                         "subject": subject,
-                        "attachment": attachment or None,
+                        "attachment": str(resolved_att_path) if resolved_att_path else None,
+                        "from": from_email,
+                        "raw_response": data2,
                     },
                 )
             else:
                 raise RuntimeError(
-                    f"Send failed after confirmation: {data2.get('message', resp2)}"
+                    f"Send failed after confirmation, unexpected response: {data2}"
                 )
 
         except subprocess.TimeoutExpired:
             print(f"  [ERROR] Timeout")
+            self._cleanup_temp(temp_dir)
             return ToolResponse.error(
                 code=ToolErrorCode.EXECUTION_ERROR,
                 message="邮件发送超时，请重试",
             )
         except Exception as e:
             print(f"  [ERROR] {e}")
+            self._cleanup_temp(temp_dir)
             return ToolResponse.error(
                 code=ToolErrorCode.EXECUTION_ERROR,
                 message=f"邮件发送失败: {str(e)}",
             )
 
-    def _format_success(self, to: str, subject: str, status: str) -> str:
-        return (
-            f"[OK] 邮件发送成功！\n"
-            f"- 收件人: {to}\n"
-            f"- 主题: {subject}\n"
-            f"- 状态: {status}\n"
-        )
+    @staticmethod
+    def _cleanup_temp(temp_dir: Optional[Path]) -> None:
+        """清理临时目录"""
+        if temp_dir and temp_dir.exists():
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                print(f"   [warn] 清理临时目录失败: {e}")
+
+    def _format_success(self, to: str, subject: str, status: str,
+                        from_email: str = "", attachment_count: int = 0) -> str:
+        lines = [
+            f"[OK] 邮件已入队发送！",
+            f"- 收件人: {to}",
+            f"- 主题: {subject}",
+            f"- 发件人: {from_email or '未知'}",
+            f"- 附件数: {attachment_count}",
+            f"- 状态: {status}",
+        ]
+        if from_email and "agent.qq.com" in from_email:
+            lines.append("- ⚠️ 发件人为虚拟邮箱，部分企业邮箱可能拦截或归入垃圾箱，请注意查收")
+        return "\n".join(lines) + "\n"
 
 
 class AgentlyComposeMailTool(Tool):
