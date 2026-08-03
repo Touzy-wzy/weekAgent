@@ -1,4 +1,4 @@
-"""Agent 运行器 - 创建并运行 FlowUs 智能体"""
+"""Agent 运行器 - 创建并运行 FlowUs 智能体 / 日志监控智能体"""
 
 import os
 
@@ -16,6 +16,13 @@ from week_agent.agent.tools.agently_mail_tools import (
     AgentlyComposeMailTool,
     AgentlySendMailTool,
 )
+from week_agent.agent.tools.log_monitor_tools import (
+    LogReadAnomaliesTool,
+    LogPositionLookupTool,
+    RunLogCheckTool,
+    LogPreviewTool,
+)
+from week_agent.agent.log_monitor_agent import create_log_monitor_agent as _create_log_monitor_agent
 
 
 def _check_llm_config() -> list[str]:
@@ -130,3 +137,23 @@ def run_query(query: str, max_steps: int = 6, retries: int = 2) -> str:
             else:
                 raise
     raise last_error  # type: ignore[misc]
+
+
+# =====================================================================
+# 日志监控智能体（复用 FlowUsAgent 体系）
+# =====================================================================
+def create_log_monitor_agent(max_steps: int = 8) -> FlowUsAgent:
+    """创建日志监控 Agent 实例（继承 FlowUsAgent，支持多轮记忆）
+
+    这是对外暴露的统一接口，内部委托给 week_agent.agent.log_monitor_agent。
+    """
+    return _create_log_monitor_agent(max_steps=max_steps)
+
+
+def run_log_query(query: str, max_steps: int = 8, retries: int = 2) -> str:
+    """便捷方法：创建日志监控 Agent 并运行一次查询（单次会话，无记忆保持）
+
+    多轮对话请用 create_log_monitor_agent() 获取持久实例。
+    """
+    from week_agent.agent.log_monitor_agent import run_log_query as _run_log_query
+    return _run_log_query(query, max_steps=max_steps, retries=retries)

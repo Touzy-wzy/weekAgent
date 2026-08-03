@@ -119,3 +119,56 @@ def run_agent_debug():
             # （FlowUsAgent 会在下次 run() 时重置 trace_logger）
 
     return 0
+
+
+# =====================================================================
+# 日志监控智能体入口
+# =====================================================================
+def run_log_agent(query: str, max_steps: int = 8) -> str:
+    """日志监控 Agent：单次查询"""
+    from week_agent.agent.runner import run_log_query
+
+    return run_log_query(query, max_steps=max_steps)
+
+
+def run_log_agent_debug():
+    """日志监控 Agent 调试模式：交互式 REPL（会话级单例，多轮记忆）"""
+    from week_agent.agent.runner import create_log_monitor_agent
+
+    try:
+        agent = create_log_monitor_agent()
+    except RuntimeError as e:
+        print(f"初始化失败: {e}")
+        return 1
+
+    print("=" * 60)
+    print("日志监控 Agent - 交互式调试（多轮记忆）")
+    print("=" * 60)
+    print("输入查询进行对话，输入 'quit' / 'exit' 退出")
+    print("输入 'clear' 清空对话历史\n")
+
+    while True:
+        try:
+            query = input(">>> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n再见!")
+            break
+
+        if not query:
+            continue
+        if query.lower() in ("quit", "exit", "q"):
+            print("再见!")
+            break
+        if query.lower() == "clear":
+            agent.clear_history()
+            print("✅ 对话历史已清空\n")
+            continue
+
+        print()
+        try:
+            answer = agent.run(query)
+            print(f"\n--- 日志监控 Agent 回答 ---\n{answer}\n")
+        except Exception as e:
+            print(f"\n❌ 错误: {e}\n")
+
+    return 0

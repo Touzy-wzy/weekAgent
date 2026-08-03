@@ -22,6 +22,8 @@ data/sessions/
 data/recipients.json
 memory/
 *.log
+LogAn/
+reports/
 
 # 生成的周报内容
 flowus_content_*.txt

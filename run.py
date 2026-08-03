@@ -28,7 +28,7 @@ from pathlib import Path
 # 确保项目根目录在 sys.path 中
 sys.path.insert(0, str(Path(__file__).parent))
 
-from week_agent.cli import run_agent_debug, run_agent_query, run_cli, run_web
+from week_agent.cli import run_agent_debug, run_agent_query, run_cli, run_web, run_log_agent, run_log_agent_debug
 from week_agent.config import DATA_DIR
 
 
@@ -45,6 +45,8 @@ def main():
   python run.py --web --port 8080                  # 自定义端口
   python run.py --agent "积成电子下有哪些页面?"      # Agent 单次查询
   python run.py --agent-debug                      # Agent 交互式调试
+  python run.py --log-agent "今天日志怎么样?"        # 日志监控 Agent 单次查询
+  python run.py --log-agent-debug                  # 日志监控 Agent 交互式调试
         """,
     )
 
@@ -90,6 +92,16 @@ def main():
         help="Agent 交互式调试模式",
     )
     parser.add_argument(
+        "--log-agent",
+        metavar="QUERY",
+        help="日志监控 Agent 单次查询模式，传入问题",
+    )
+    parser.add_argument(
+        "--log-agent-debug",
+        action="store_true",
+        help="日志监控 Agent 交互式调试模式",
+    )
+    parser.add_argument(
         "--max-steps",
         type=int,
         default=6,
@@ -97,6 +109,20 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # 日志监控 Agent 调试模式
+    if args.log_agent_debug:
+        return run_log_agent_debug()
+
+    # 日志监控 Agent 单次查询模式
+    if args.log_agent:
+        try:
+            answer = run_log_agent(args.log_agent, max_steps=args.max_steps)
+            print(f"\n{'=' * 60}\n日志监控 Agent 回答:\n{'=' * 60}\n{answer}")
+            return 0
+        except Exception as e:
+            print(f"\n❌ 错误: {e}")
+            return 1
 
     # Agent 调试模式
     if args.agent_debug:
