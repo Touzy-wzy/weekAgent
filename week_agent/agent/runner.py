@@ -45,6 +45,11 @@ def create_tool_registry() -> ToolRegistry:
     registry.register_tool(FlowUsSearchTool())
     registry.register_tool(AgentlyComposeMailTool())
     registry.register_tool(AgentlySendMailTool())
+    # 注册新工具
+    from week_agent.agent.tools.history_tools import RecallHistoryTool
+    from week_agent.agent.tools.memory_tools import MemorySearchTool
+    registry.register_tool(RecallHistoryTool())
+    registry.register_tool(MemorySearchTool())
     return registry
 
 

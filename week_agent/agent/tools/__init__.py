@@ -15,6 +15,8 @@ from .log_monitor_tools import (
     RunLogCheckTool,
     LogPreviewTool,
 )
+from .history_tools import RecallHistoryTool
+from .memory_tools import MemorySearchTool
 
 __all__ = [
     "FlowUsListPagesTool",
@@ -26,4 +28,6 @@ __all__ = [
     "LogPositionLookupTool",
     "RunLogCheckTool",
     "LogPreviewTool",
+    "RecallHistoryTool",
+    "MemorySearchTool",
 ]
