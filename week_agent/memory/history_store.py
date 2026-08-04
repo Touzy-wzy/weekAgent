@@ -55,8 +55,10 @@ class SQLiteHistoryStore:
 
     def _init_db(self) -> None:
         """初始化数据库表结构"""
-        with self._get_conn() as conn:
-            conn.execute("""
+        # 对于 :memory: 数据库，需要保持连接打开
+        if self.db_path == ':memory:':
+            self._conn = self._get_conn()
+            self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS messages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     session_id TEXT NOT NULL,
@@ -67,13 +69,36 @@ class SQLiteHistoryStore:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            conn.execute("""
+            self._conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_session ON messages(session_id)
             """)
-            conn.commit()
+            self._conn.commit()
+        else:
+            conn = self._get_conn()
+            try:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        session_id TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        timestamp TEXT,
+                        metadata TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_session ON messages(session_id)
+                """)
+                conn.commit()
+            finally:
+                conn.close()
 
     def _get_conn(self) -> sqlite3.Connection:
         """获取数据库连接"""
+        # 对于 :memory: 数据库，返回已打开的连接
+        if self.db_path == ':memory:' and hasattr(self, '_conn'):
+            return self._conn
         return sqlite3.connect(self.db_path)
 
     def append(self, message: dict, session_id: str = None) -> None:
