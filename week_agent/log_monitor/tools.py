@@ -118,3 +118,57 @@ class LogReadTool(Tool):
                 message=f"读取日志失败: {str(e)}",
                 context={"filepath": filepath, "files": files},
             )
+
+
+class LogListFilesTool(Tool):
+    """列出当前可用的日志文件（不读取内容，只展示文件信息）
+
+    供 LLM 在读取前先"看到"目录里有什么文件，再决定读哪个。
+    支持 glob 模式过滤。
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="log_list_files",
+            description=(
+                "列出当前可用的日志文件（不读取内容）。"
+                "返回文件名、大小、修改时间，供决定读取哪些文件。"
+                "支持自定义 glob 模式过滤。"
+            ),
+        )
+
+    def get_parameters(self) -> List[ToolParameter]:
+        return [
+            ToolParameter(
+                name="glob_pattern",
+                type="string",
+                description=(
+                    "自定义 glob 模式（可选）。"
+                    "默认扫描 *.log，传 'app.log*' 可只看 app 相关日志。"
+                ),
+                required=False,
+                default="",
+            ),
+        ]
+
+    def run(self, parameters: Dict[str, Any]) -> ToolResponse:
+        glob_pattern = str(parameters.get("glob_pattern") or "").strip() or None
+
+        print(f"📂 [log_list_files] glob={glob_pattern or config.LOG_MONITOR_GLOB}")
+
+        try:
+            text = config.list_log_files_as_text(glob_pattern=glob_pattern)
+            files = config.resolve_log_files(glob_pattern=glob_pattern)
+
+            print(f"  ✅ 发现 {len(files)} 个文件")
+
+            return ToolResponse.success(
+                text=text,
+                data={"files": [str(f) for f in files], "count": len(files)},
+            )
+        except Exception as e:
+            print(f"  ❌ 列出文件失败: {e}")
+            return ToolResponse.error(
+                code=ToolErrorCode.EXECUTION_ERROR,
+                message=f"列出日志文件失败: {str(e)}",
+            )

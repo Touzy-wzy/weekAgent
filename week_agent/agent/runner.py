@@ -48,8 +48,10 @@ def create_tool_registry() -> ToolRegistry:
     # 注册新工具
     from week_agent.agent.tools.history_tools import RecallHistoryTool
     from week_agent.agent.tools.memory_tools import MemorySearchTool
+    from week_agent.agent.tools.log_monitor_tools import LogListFilesTool
     registry.register_tool(RecallHistoryTool())
     registry.register_tool(MemorySearchTool())
+    registry.register_tool(LogListFilesTool())
     return registry
 
 

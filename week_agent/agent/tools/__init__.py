@@ -10,6 +10,7 @@ from .agently_mail_tools import (
     AgentlySendMailTool,
 )
 from .log_monitor_tools import (
+    LogListFilesTool,
     LogReadAnomaliesTool,
     LogPositionLookupTool,
     RunLogCheckTool,
@@ -24,6 +25,7 @@ __all__ = [
     "FlowUsSearchTool",
     "AgentlyComposeMailTool",
     "AgentlySendMailTool",
+    "LogListFilesTool",
     "LogReadAnomaliesTool",
     "LogPositionLookupTool",
     "RunLogCheckTool",
