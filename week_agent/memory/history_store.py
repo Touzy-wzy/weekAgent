@@ -105,12 +105,24 @@ class SQLiteHistoryStore:
         """追加消息到历史
 
         Args:
-            message: 消息字典，包含 role, content, timestamp(可选), metadata(可选)
+            message: 消息字典或 Message 对象，包含 role, content, timestamp(可选), metadata(可选)
             session_id: 会话 ID（可选，默认使用初始化时的 session_id）
         """
         session_id = session_id or self.session_id
-        metadata_str = json.dumps(message.get("metadata")) if message.get("metadata") else None
-        timestamp = message.get("timestamp")
+
+        # 支持 Message 对象和字典两种格式
+        if hasattr(message, 'role'):  # Message 对象
+            role = message.role
+            content = message.content
+            timestamp = getattr(message, 'timestamp', None)
+            metadata = getattr(message, 'metadata', None)
+        else:  # 字典格式
+            role = message.get("role")
+            content = message.get("content")
+            timestamp = message.get("timestamp")
+            metadata = message.get("metadata")
+
+        metadata_str = json.dumps(metadata) if metadata else None
 
         with self._get_conn() as conn:
             conn.execute(
@@ -118,7 +130,7 @@ class SQLiteHistoryStore:
                 INSERT INTO messages (session_id, role, content, timestamp, metadata)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (session_id, message["role"], message["content"], timestamp, metadata_str)
+                (session_id, role, content, timestamp, metadata_str)
             )
             conn.commit()
 

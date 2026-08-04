@@ -7,10 +7,11 @@
    （原版 finalize() 后再 run() 会报 "I/O operation on closed file"）
 3. 重写 _generate_smart_summary：摘要 LLM 复用主 LLM 配置
    （原版默认用 deepseek-chat，我们环境是 modelscope）
+4. 使用 SQLiteHistoryStore 替代内存 HistoryManager，实现持久化存储
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from hello_agents.agents.react_agent import ReActAgent
 from hello_agents.core.agent import Agent
@@ -18,6 +19,8 @@ from hello_agents.core.config import Config
 from hello_agents.core.llm import HelloAgentsLLM
 from hello_agents.core.message import Message
 from hello_agents.observability.trace_logger import TraceLogger
+
+from week_agent.memory.history_store import SQLiteHistoryStore
 
 
 class FlowUsAgent(ReActAgent):
@@ -31,6 +34,7 @@ class FlowUsAgent(ReActAgent):
         system_prompt: str | None = None,
         config: Config | None = None,
         max_steps: int = 6,
+        session_id: str = "default",
     ):
         super().__init__(
             name=name,
@@ -43,6 +47,12 @@ class FlowUsAgent(ReActAgent):
 
         # 缓存主 LLM 配置，供智能摘要复用
         self._main_llm = llm
+
+        # 使用 SQLiteHistoryStore 替代内存 HistoryManager，实现持久化存储
+        self.history_manager = SQLiteHistoryStore(
+            session_id=session_id,
+            min_retain_rounds=config.min_retain_rounds if config else 10,
+        )
 
     # ------------------------------------------------------------------
     # 关键改进 1：注入历史消息
@@ -64,14 +74,44 @@ class FlowUsAgent(ReActAgent):
         history = self.get_history()
         if history:
             for msg in history:
-                # 跳过 summary 占位消息中的系统标记，保留 content
-                role = msg.role if msg.role in ("user", "assistant", "system") else "user"
-                messages.append({"role": role, "content": msg.content})
+                # 支持 Message 对象和字典两种格式
+                if hasattr(msg, 'role'):  # Message 对象
+                    role = msg.role if msg.role in ("user", "assistant", "system") else "user"
+                    content = msg.content
+                else:  # 字典格式
+                    role = msg.get("role", "user") if msg.get("role") in ("user", "assistant", "system") else "user"
+                    content = msg.get("content", "")
+                messages.append({"role": role, "content": content})
 
         # 3. 当前用户问题
         messages.append({"role": "user", "content": input_text})
 
         return messages
+
+    # ------------------------------------------------------------------
+    # 关键改进 1.5：历史管理接口
+    # ------------------------------------------------------------------
+    def get_history(self) -> List[Any]:
+        """获取会话历史消息
+
+        从 SQLiteHistoryStore 获取历史，兼容 hello-agents 框架。
+
+        Returns:
+            消息列表（字典格式）
+        """
+        if hasattr(self.history_manager, 'get_history'):
+            return self.history_manager.get_history()
+        elif hasattr(self.history_manager, 'messages'):
+            # 兼容原版 HistoryManager
+            return self.history_manager.messages
+        return []
+
+    def clear_history(self) -> None:
+        """清除会话历史消息"""
+        if hasattr(self.history_manager, 'clear'):
+            self.history_manager.clear()
+        elif hasattr(self.history_manager, 'messages'):
+            self.history_manager.messages = []
 
     # ------------------------------------------------------------------
     # 关键改进 2：修复 TraceLogger 文件句柄
