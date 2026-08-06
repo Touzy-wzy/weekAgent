@@ -17,19 +17,17 @@ env/
 .flowus_token.json
 
 # 运行时生成的数据
-data/
-*.log
+data/drafts/
+data/sessions/
+data/uploads/
+data/recipients.json
 memory/
+*.log
 LogAn/
 reports/
 
 # 生成的周报内容
 flowus_content_*.txt
-
-# SQLite 数据库文件
-*.db
-*.db-shm
-*.db-wal
 
 # IDE
 .vscode/

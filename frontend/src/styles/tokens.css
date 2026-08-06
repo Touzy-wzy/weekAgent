@@ -1,0 +1,87 @@
+/* GGBond 设计令牌 - 科技感 + 豆包克制风格 */
+:root {
+  /* 背景层 */
+  --bg-base: #ffffff;
+  --bg-subtle: #f7f8fa;
+  --bg-elevated: #ffffff;
+  --bg-sunken: #f0f2f5;
+  --bg-overlay: rgba(255, 255, 255, 0.72);
+
+  /* 文字 */
+  --text-primary: #1a1a2e;
+  --text-secondary: #4a4a6a;
+  --text-tertiary: #8a8aa0;
+  --text-quaternary: #b8b8c8;
+  --text-inverse: #ffffff;
+
+  /* 品牌色：蓝紫渐变 */
+  --brand-50: #f0f4ff;
+  --brand-100: #e0eaff;
+  --brand-200: #c9d6ff;
+  --brand-300: #8aa9ff;
+  --brand-400: #6a8eff;
+  --brand-500: #4a6cf7;
+  --brand-600: #3454e0;
+  --brand-700: #2840b8;
+  --brand-800: #1f3390;
+  --accent-1: #4a6cf7;
+  --accent-2: #7b5cff;
+  --accent-gradient: linear-gradient(135deg, #4a6cf7 0%, #7b5cff 100%);
+  --accent-gradient-soft: linear-gradient(135deg, rgba(74, 108, 247, 0.12) 0%, rgba(123, 92, 255, 0.12) 100%);
+
+  /* 语义色 */
+  --success: #16a34a;
+  --success-soft: #e8f7ef;
+  --warning: #d97706;
+  --warning-soft: #fef3e6;
+  --danger: #dc2626;
+  --danger-soft: #fdeaea;
+  --info: #0ea5e9;
+  --info-soft: #e3f4fd;
+
+  /* 光晕 */
+  --glow-brand: rgba(74, 108, 247, 0.15);
+  --glow-purple: rgba(123, 92, 255, 0.12);
+
+  /* 边界 */
+  --border-subtle: #eceef2;
+  --border-default: #dfe2e8;
+  --border-strong: #c8ccd6;
+  --border-focus: var(--brand-500);
+
+  /* 阴影 */
+  --shadow-xs: 0 1px 1px rgba(20, 30, 60, 0.03);
+  --shadow-sm: 0 1px 2px rgba(20, 30, 60, 0.04), 0 1px 3px rgba(20, 30, 60, 0.03);
+  --shadow-md: 0 4px 12px rgba(20, 30, 60, 0.06), 0 2px 4px rgba(20, 30, 60, 0.04);
+  --shadow-lg: 0 12px 32px rgba(20, 30, 60, 0.08), 0 4px 12px rgba(20, 30, 60, 0.05);
+  --shadow-xl: 0 20px 48px rgba(20, 30, 60, 0.1);
+  --shadow-glow: 0 0 0 4px var(--glow-brand);
+  --shadow-card: var(--shadow-sm);
+
+  /* 圆角 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* 字体 */
+  --font-sans: "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --font-display: "HarmonyOS Sans SC", "PingFang SC", system-ui, sans-serif;
+
+  /* 尺寸 */
+  --sidebar-w: 232px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h: 56px;
+  --content-max: 1200px;
+  --chat-max: 820px;
+
+  /* 动效 */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 0.15s;
+  --dur: 0.22s;
+  --dur-slow: 0.4s;
+}

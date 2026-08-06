@@ -12,6 +12,8 @@ from week_agent.agent.tools.flowus_tools import (
     FlowUsListPagesTool,
     FlowUsSearchTool,
 )
+from week_agent.agent.tools.flowus_weekly_tool import FlowUsFetchWeeklyTool
+from week_agent.agent.tools.fill_excel_tool import FillExcelTool
 from week_agent.agent.tools.agently_mail_tools import (
     AgentlyComposeMailTool,
     AgentlySendMailTool,
@@ -38,14 +40,38 @@ def _check_llm_config() -> list[str]:
 
 
 def create_tool_registry() -> ToolRegistry:
-    """创建并注册 FlowUs 和邮件工具集"""
+    """创建并注册通用智能体的工具集
+
+    工具一旦注册即对 Agent 可见，但是否调用由 LLM 根据用户意图决定。
+    日常聊天不会触发周报相关工具，只有在用户表达周报意图时才会被调用。
+    """
     registry = ToolRegistry()
+    # FlowUs 通用查询工具
     registry.register_tool(FlowUsListPagesTool())
     registry.register_tool(FlowUsGetPageTool())
     registry.register_tool(FlowUsSearchTool())
+    # FlowUs 周报素材拉取（按日期区间汇总）
+    registry.register_tool(FlowUsFetchWeeklyTool())
+    # 通用文件读取（含 docx/pdf/txt/md/xlsx）
+    from week_agent.agent.tools.read_uploaded_file_tool import (
+        ListUploadedFilesTool,
+        ReadUploadedFileTool,
+    )
+    registry.register_tool(ReadUploadedFileTool())
+    registry.register_tool(ListUploadedFilesTool())
+    # 周报 Excel 填写
+    registry.register_tool(FillExcelTool())
+    # 邮件
     registry.register_tool(AgentlyComposeMailTool())
     registry.register_tool(AgentlySendMailTool())
-    # 注册新工具
+    # 常用收件人管理
+    from week_agent.agent.tools.recipient_tools import (
+        AddRecipientTool,
+        ListRecipientsTool,
+    )
+    registry.register_tool(ListRecipientsTool())
+    registry.register_tool(AddRecipientTool())
+    # 历史/记忆/日志
     from week_agent.agent.tools.history_tools import RecallHistoryTool
     from week_agent.agent.tools.memory_tools import MemorySearchTool
     from week_agent.agent.tools.log_monitor_tools import LogListFilesTool
@@ -79,11 +105,12 @@ def create_agent_config() -> Config:
     )
 
 
-def create_flowus_agent(max_steps: int = 6) -> FlowUsAgent:
+def create_flowus_agent(max_steps: int = 6, session_id: str = "default") -> FlowUsAgent:
     """创建 FlowUs Agent 实例（支持多轮对话记忆）
 
     Args:
         max_steps: 最大推理步数
+        session_id: 会话 ID（传入后历史消息按会话隔离存储，默认 "default"）
 
     Returns:
         FlowUsAgent 实例（ReActAgent 子类，注入历史消息）
@@ -102,13 +129,22 @@ def create_flowus_agent(max_steps: int = 6) -> FlowUsAgent:
     registry = create_tool_registry()
     config = create_agent_config()
 
+    # 把当前会话 ID 注入 system prompt，让 LLM 调用文件工具时传对参数
+    system_prompt = SYSTEM_PROMPT + (
+        f"\n\n## 当前会话信息\n"
+        f"- 当前会话 ID: {session_id}\n"
+        f"- 用户上传的文件保存在当前会话下，调用 `list_uploaded_files` 和 "
+        f"`read_uploaded_file` 时，session_id 参数必须填 `{session_id}`\n"
+    )
+
     return FlowUsAgent(
         name="FlowUs助手",
         llm=llm,
         tool_registry=registry,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         config=config,
         max_steps=max_steps,
+        session_id=session_id,
     )
 
 

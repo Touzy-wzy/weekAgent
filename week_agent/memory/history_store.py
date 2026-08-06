@@ -182,6 +182,14 @@ class SQLiteHistoryStore:
             conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
             conn.commit()
 
+    def estimate_rounds(self, session_id: str = None) -> int:
+        """估算会话的对话轮数（兼容 hello-agents HistoryManager 接口）
+
+        以 user 消息数作为轮数估算。
+        """
+        history = self.get_history(session_id)
+        return sum(1 for msg in history if msg.get("role") == "user")
+
     def find_round_boundaries(self, session_id: str = None) -> List[int]:
         """查找每轮对话的起始索引
 

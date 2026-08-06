@@ -1,0 +1,273 @@
+{
+  "config": {
+    "model": "glm-4.5-air",
+    "file": "E:\\weekAgent\\app.log",
+    "rounds": 5
+  },
+  "results_a": [
+    {
+      "approach": "A-LogAn模板方案",
+      "t_read_parse": 1.0182032585144043,
+      "t_template": 0.4001495838165283,
+      "t_llm": 83.85424757003784,
+      "t_total": 85.4586386680603,
+      "prompt_tokens": 22029,
+      "completion_tokens": 2048,
+      "total_tokens": 24077,
+      "prompt_chars": 51944,
+      "template_count": 126,
+      "record_count": 2226,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:44:36\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 (原始1919行 → 126个模板)\n异常级别分布: {\"INFO\": 2014, \"WARNING\": 212}\n\n── 异常分析\n1. 性能异常：检测到多例LLM响应时间过长\n   - 模板#22: 总响应时间14.77秒 (正常约0.6-1秒)\n   - 模板#59: 总响应时间10.24秒\n   - 模板#77: 总响应时间12.06秒\n   这些异常"
+    },
+    {
+      "approach": "A-LogAn模板方案",
+      "t_read_parse": 0.9549806118011475,
+      "t_template": 0.35851216316223145,
+      "t_llm": 43.60118341445923,
+      "t_total": 45.087228298187256,
+      "prompt_tokens": 22029,
+      "completion_tokens": 1593,
+      "total_tokens": 23622,
+      "prompt_chars": 51944,
+      "template_count": 126,
+      "record_count": 2226,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:47:35\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 (原始1919行 → 126个模板)\n异常级别分布: {\"INFO\": 2014, \"WARNING\": 212}\n\n── 异常分析\n1. 性能异常：多个LLM请求响应时间过长\n   - 模板#22: 总响应时间14.77秒，内容块1326个\n   - 模板#59: 总响应时间10.24秒，内容块865个\n   - 模板#77: 总响应时间12.06秒，内容块1058个\n   - 模板#92: 总响应时间11.92秒，内容块1041个\n   - 模板#124: 总响应时间15.98秒，内容块1460个\n\n2. 资源使用异常：部分请求消耗大量token和资源\n   - 高token使用量请求集中在少数模板中\n   - 内容块数量异常偏高（>1000）\n\n3. 日志记录不完整\n   - 模板#6: 仅记录组件名称，无具体操作信息（251次）\n   - 模板#12: 仅记录单个数字，无上下文信息（116次）\n\n4. 特殊"
+    },
+    {
+      "approach": "A-LogAn模板方案",
+      "t_read_parse": 0.9804279804229736,
+      "t_template": 0.339141845703125,
+      "t_llm": 75.76221776008606,
+      "t_total": 77.25644135475159,
+      "prompt_tokens": 22029,
+      "completion_tokens": 2048,
+      "total_tokens": 24077,
+      "prompt_chars": 51944,
+      "template_count": 126,
+      "record_count": 2226,
+      "result_preview": ""
+    },
+    {
+      "approach": "A-LogAn模板方案",
+      "t_read_parse": 0.9509143829345703,
+      "t_template": 0.34978151321411133,
+      "t_llm": 39.29228687286377,
+      "t_total": 40.77201747894287,
+      "prompt_tokens": 22029,
+      "completion_tokens": 1343,
+      "total_tokens": 23372,
+      "prompt_chars": 51944,
+      "template_count": 126,
+      "record_count": 2226,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:51:36\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 (原始1919行 → 126个模板)\n异常级别分布: {\"INFO\": 2014, \"WARNING\": 212}\n\n── 异常分析\n1. 潜在性能问题:\n   - 模板#22 (1次): LLM响应时间过长 [LLM->] iter=1 finish reason=stop total=14.77s\n   - 模板#124 (1次): LLM响应时间过长 [LLM->] iter=3 finish reason=stop total=15.98s\n   - 模板#77 (1次): LLM响应时间较长 [LLM->] iter=1 finish reason=stop total=12.06s\n\n2. 异常日志内容:\n   - 模板#29 (7次): \"DMS FA\" - 内容简短且含义不明确，可能表示异常状态\n   - 模板#36 (1次): 包含\"FA\"和\"DMS1000E\"的特殊内容，可能是特定错误状态\n  "
+    },
+    {
+      "approach": "A-LogAn模板方案",
+      "t_read_parse": 0.9371335506439209,
+      "t_template": 0.35254859924316406,
+      "t_llm": 50.66249752044678,
+      "t_total": 52.13008785247803,
+      "prompt_tokens": 22029,
+      "completion_tokens": 2048,
+      "total_tokens": 24077,
+      "prompt_chars": 51944,
+      "template_count": 126,
+      "record_count": 2226,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:53:45\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 (原始1919行 → 126个模板)\n异常级别分布: {\"INFO\": 2014, \"WARNING\": 212}\n\n── 异常分析\n1. 内容异常模板：\n   - 模板#36、#19、#86、#116、#101：LLM生成内容混乱，包含\"FA\"、\"****DMS****\"等异常标记\n   - 模板#29：重复出现\"DMS FA\"简短内容，可能表示错误状态\n   - 模板#20：认证信息中name和department字段为空，数据不完整\n\n2. 性能异常模板：\n   - 模板#22、#77、#59、#92、#124：LLM处理时间异常长(10-15秒)，远超正常水平(0.3-6秒)\n   - 模板#125：QA会话问题内容不完整，可能表示查询处理异常\n\n3. 系统组件异常：\n   - 多个ies agents相关模板返回评分列表，可能表示检索或评分系统异常\n   - streaming rag agent多次出现"
+    }
+  ],
+  "results_b": [
+    {
+      "approach": "B-weekAgent原始日志",
+      "t_read_parse": 0.031633615493774414,
+      "t_llm": 16.8313889503479,
+      "t_total": 16.864017248153687,
+      "prompt_tokens": 2787,
+      "completion_tokens": 657,
+      "total_tokens": 3444,
+      "prompt_chars": 5052,
+      "record_count": 212,
+      "sent_count": 60,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:46:00\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 212条 WARNING/ERROR（共212条记录）\n异常级别分布: {\"WARNING\": 212}\n\n── 异常分析\n所有异常记录均为WARNING级别，且来自同一模块\"ies_agents\"。异常信息高度一致，均为\"无效的分片检索结果 或 重复的分块，已跳过\"。这些警告在短时间内集中爆发，例如：\n- 13:42:16-13:42:18时段出现连续多条警告\n- 14:02:44-14:02:53时段出现大量警告\n- 14:59:31-14:59:34时段再次集中出现\n\n系统选择跳过无效数据而非处理，表明存在分片检索或分块处理机制异常，可能导致数据完整性问题。\n\n── 告警结论\n需要告警: 是\n严重级别: warning\n核心问题: 系统在分片检索过程中频繁遇到无效结果或重复分块，导致大量数据被跳过，可能影响数据处理完整性和检索准确性。\n```"
+    },
+    {
+      "approach": "B-weekAgent原始日志",
+      "t_read_parse": 0.03192758560180664,
+      "t_llm": 20.112351655960083,
+      "t_total": 20.14427924156189,
+      "prompt_tokens": 2787,
+      "completion_tokens": 764,
+      "total_tokens": 3551,
+      "prompt_chars": 5052,
+      "record_count": 212,
+      "sent_count": 60,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:48:19\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 212条 WARNING/ERROR（共212条记录）\n异常级别分布: {\"WARNING\": 212}\n\n── 异常分析\n所有异常记录均为WARNING级别，且内容完全一致：\"无效的分片检索结果 或 重复的分块，已跳过\"。这些异常集中在以下时间段：\n- 13:40-13:43\n- 14:02-14:02\n- 14:59-14:59\n- 15:01-15:01\n\n异常均来自\"ies_agents\"模块，表明系统在处理分片检索时遇到了问题，但系统已采取\"跳过\"措施处理这些无效分片。从时间分布看，问题呈现间歇性爆发特征，而非持续发生。\n\n── 告警结论\n需要告警: 是\n严重级别: warning\n核心问题: 系统在分片检索过程中频繁遇到无效结果或重复分块，虽然系统已跳过这些无效项，但这种情况频繁发生可能影响数据检索的完整性和准确性，需要检查分片检索逻辑和数据一致性。\n```"
+    },
+    {
+      "approach": "B-weekAgent原始日志",
+      "t_read_parse": 0.040956735610961914,
+      "t_llm": 16.15335464477539,
+      "t_total": 16.195318937301636,
+      "prompt_tokens": 2787,
+      "completion_tokens": 637,
+      "total_tokens": 3424,
+      "prompt_chars": 5052,
+      "record_count": 212,
+      "sent_count": 60,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:50:34\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 212条 WARNING/ERROR（共212条记录）\n异常级别分布: {\"WARNING\": 212}\n\n── 异常分析\n所有异常记录均为WARNING级别，来自同一模块\"ies_agents\"，错误信息完全一致：\"无效的分片检索结果 或 重复的分块，已跳过\"。这些警告集中在几个时间段内出现：\n- 13:40-13:43时段出现21条\n- 14:02-14:02时段出现25条\n- 14:59-15:01时段出现12条\n\n异常表明系统在处理数据分片时遇到了无效结果或重复数据块，但系统选择跳过这些数据继续运行。从时间分布看，问题呈现间歇性爆发特征，而非持续状态。\n\n── 告警结论\n需要告警: 是\n严重级别: warning\n核心问题: ies_agents模块在数据处理过程中频繁遇到无效分片检索结果或重复分块，虽然系统能够通过跳过问题数据继续运行，但这种现象可能影响数据处理的完整性和准确性，需要关注数据源质量或分片逻辑是否存在问"
+    },
+    {
+      "approach": "B-weekAgent原始日志",
+      "t_read_parse": 0.04521989822387695,
+      "t_llm": 27.709189414978027,
+      "t_total": 27.754409313201904,
+      "prompt_tokens": 2787,
+      "completion_tokens": 656,
+      "total_tokens": 3443,
+      "prompt_chars": 5052,
+      "record_count": 212,
+      "sent_count": 60,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:52:15\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 212条 WARNING/ERROR（共212条记录）\n异常级别分布: {\"WARNING\": 212}\n\n── 异常分析\n所有异常记录均为同一类型警告，均来自\"ies_agents\"模块，错误信息为\"无效的分片检索结果 或 重复的分块，已跳过\"。这些警告在短时间内密集出现，特别是在13:42:16-13:42:18、14:02:44-14:02:53和14:59:31-14:59:34等时间段。系统检测到无效数据后采取了跳过处理，表明系统仍能继续运行，但数据处理逻辑可能存在问题。\n\n── 告警结论\n需要告警: 是\n严重级别: warning\n核心问题: 系统在分片检索过程中频繁遇到无效结果或重复分块，虽然系统已跳过这些情况，但表明数据处理逻辑可能存在问题，需要进一步调查数据源或检索算法。\n```"
+    },
+    {
+      "approach": "B-weekAgent原始日志",
+      "t_read_parse": 0.03525424003601074,
+      "t_llm": 13.447774648666382,
+      "t_total": 13.483028888702393,
+      "prompt_tokens": 2787,
+      "completion_tokens": 616,
+      "total_tokens": 3403,
+      "prompt_chars": 5052,
+      "record_count": 212,
+      "sent_count": 60,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:54:36\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 212条 WARNING/ERROR（共212条记录）\n异常级别分布: {\"WARNING\": 212}\n\n── 异常分析\n所有异常记录均为WARNING级别，来自同一模块\"ies_agents\"，且内容完全一致：\"无效的分片检索结果 或 重复的分块，已跳过\"。这些异常在2026-07-31 13:40:58至15:01:28期间频繁出现，约1小时21分钟内发生了212次。系统已采取\"跳过\"措施处理这些无效或重复数据，表明有基本的错误处理机制，但频繁出现可能影响数据处理效率和准确性。\n\n── 告警结论\n需要告警: 是\n严重级别: warning\n核心问题: ies_agents模块在数据检索和处理过程中频繁遇到无效分片或重复分块，虽然系统已采取跳过措施，但这种情况持续发生可能影响数据处理效率和结果准确性，建议检查数据源质量和检索逻辑。\n```"
+    }
+  ],
+  "results_c": [
+    {
+      "approach": "C-完整LogAn管道",
+      "t_read_parse": 0.941784143447876,
+      "t_template": 0.32710957527160645,
+      "t_gs_classify": 37.05897903442383,
+      "t_fc_classify": 0.0,
+      "t_merge": 0.04348158836364746,
+      "t_llm": 38.32626986503601,
+      "t_total": 76.71458196640015,
+      "prompt_tokens": 311,
+      "completion_tokens": 369,
+      "total_tokens": 680,
+      "prompt_chars": 616,
+      "template_count": 126,
+      "record_count": 2226,
+      "gs_dist": {
+        "information": 2226
+      },
+      "fc_dist": {
+        "other": 2226
+      },
+      "normal_windows": 53,
+      "anomaly_windows": 0,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:46:55\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 → 126模板 → 0异常窗口\n异常级别分布: {\"information\": 2226}\n\n── 异常分析\n\n\n── 告警结论\n需要告警: 否\n严重级别: info\n核心问题: 未检测到异常模式，系统运行正常\n```"
+    },
+    {
+      "approach": "C-完整LogAn管道",
+      "t_read_parse": 0.9395325183868408,
+      "t_template": 0.34610486030578613,
+      "t_gs_classify": 26.61596369743347,
+      "t_fc_classify": 0.0,
+      "t_merge": 0.013689994812011719,
+      "t_llm": 10.165764093399048,
+      "t_total": 38.083059549331665,
+      "prompt_tokens": 311,
+      "completion_tokens": 366,
+      "total_tokens": 677,
+      "prompt_chars": 616,
+      "template_count": 126,
+      "record_count": 2226,
+      "gs_dist": {
+        "information": 2226
+      },
+      "fc_dist": {
+        "other": 2226
+      },
+      "normal_windows": 53,
+      "anomaly_windows": 0,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:49:07\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 → 126模板 → 0异常窗口\n异常级别分布: {\"information\": 2226}\n\n── 异常分析\n无异常窗口检测。所有2226条日志记录均被归类为信息级别，且故障类别均为\"other\"。系统运行正常，未检测到任何异常模式或需要关注的故障点。\n\n── 告警结论\n需要告警: 否\n严重级别: info\n核心问题: 系统运行正常，未检测到任何异常情况\n```"
+    },
+    {
+      "approach": "C-完整LogAn管道",
+      "t_read_parse": 0.9597568511962891,
+      "t_template": 0.34482240676879883,
+      "t_gs_classify": 31.270952224731445,
+      "t_fc_classify": 0.0,
+      "t_merge": 0.018210172653198242,
+      "t_llm": 11.490578651428223,
+      "t_total": 44.08527112007141,
+      "prompt_tokens": 311,
+      "completion_tokens": 397,
+      "total_tokens": 708,
+      "prompt_chars": 616,
+      "template_count": 126,
+      "record_count": 2226,
+      "gs_dist": {
+        "information": 2226
+      },
+      "fc_dist": {
+        "other": 2226
+      },
+      "normal_windows": 53,
+      "anomaly_windows": 0,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:51:23\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 → 126模板 → 0异常窗口\n异常级别分布: {\"information\": 2226}\n\n── 异常分析\n无异常记录检测。所有2226条日志均被归类为信息级别，属于\"other\"故障类别。系统运行正常，未发现任何异常模式或行为。\n\n── 告警结论\n需要告警: 否\n严重级别: info\n核心问题: 系统运行正常，未检测到任何异常情况\n```"
+    },
+    {
+      "approach": "C-完整LogAn管道",
+      "t_read_parse": 0.9574868679046631,
+      "t_template": 0.35326194763183594,
+      "t_gs_classify": 44.746148347854614,
+      "t_fc_classify": 0.0,
+      "t_merge": 0.014660120010375977,
+      "t_llm": 14.498206853866577,
+      "t_total": 60.57076144218445,
+      "prompt_tokens": 311,
+      "completion_tokens": 363,
+      "total_tokens": 674,
+      "prompt_chars": 616,
+      "template_count": 126,
+      "record_count": 2226,
+      "gs_dist": {
+        "information": 2226
+      },
+      "fc_dist": {
+        "other": 2226
+      },
+      "normal_windows": 53,
+      "anomaly_windows": 0,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:53:29\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 → 126模板 → 0异常窗口\n异常级别分布: {\"information\": 2226}\n\n── 异常分析\n未检测到任何异常窗口，所有日志记录均为信息级别，归类为\"other\"类别。系统运行正常，未发现需要关注的异常模式。\n\n── 告警结论\n需要告警: 否\n严重级别: info\n核心问题: 系统运行正常，未检测到任何异常情况\n```"
+    },
+    {
+      "approach": "C-完整LogAn管道",
+      "t_read_parse": 0.9475922584533691,
+      "t_template": 0.3271803855895996,
+      "t_gs_classify": 21.35257863998413,
+      "t_fc_classify": 0.0,
+      "t_merge": 0.014757156372070312,
+      "t_llm": 10.003060340881348,
+      "t_total": 32.646737575531006,
+      "prompt_tokens": 311,
+      "completion_tokens": 388,
+      "total_tokens": 699,
+      "prompt_chars": 616,
+      "template_count": 126,
+      "record_count": 2226,
+      "gs_dist": {
+        "information": 2226
+      },
+      "fc_dist": {
+        "other": 2226
+      },
+      "normal_windows": 53,
+      "anomaly_windows": 0,
+      "result_preview": "```\n【日志分析报告】\n分析时间: 2026-08-05 17:55:12\n日志文件: E:\\weekAgent\\app.log\n\n── 数据概况\n总记录数: 2226条 → 126模板 → 0异常窗口\n异常级别分布: {\"information\": 2226}\n\n── 异常分析\n未检测到任何异常窗口。所有2226条日志记录均为信息级别，归类为\"other\"故障类别。系统运行状态正常，共识别出53个正常窗口。\n\n── 告警结论\n需要告警: 否\n严重级别: info\n核心问题: 系统运行正常，未检测到任何异常情况\n```"
+    }
+  ]
+}

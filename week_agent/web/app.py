@@ -1,41 +1,52 @@
 """FastAPI 应用 - FlowUs 内容浏览器 + Agent 对话"""
 
 from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from week_agent.config import DEFAULT_PROJECT, STATIC_DIR
+from week_agent.config import DATA_DIR, DEFAULT_PROJECT, STATIC_DIR
 from week_agent.web.services import (
     cached_get,
     clear_agent_session,
     clear_cache,
+    create_agent_session,
+    delete_agent_session,
     fetch_page_content,
     fetch_page_tree,
+    get_agent_messages,
+    get_agent_session,
+    list_agent_files,
+    list_agent_sessions,
     run_agent_query,
+    save_agent_upload,
     search_pages,
-)
-from week_agent.web.weekly_services import (
-    add_recipient,
-    create_session,
-    get_session,
-    handle_session_message,
-    list_recipients,
-    list_sessions,
-    remove_recipient,
-    save_upload_file,
+    stream_agent_query,
 )
 
-app = FastAPI(title="FlowUs 内容浏览器 + 周报 Agent")
+app = FastAPI(title="GGBond")
+
+# CORS（开发期 Vite dev server 跨域）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    """主页面"""
+    """主页面（Vue 构建产物）"""
     html_path = STATIC_DIR / "index.html"
     if html_path.exists():
         return html_path.read_text(encoding="utf-8")
-    return HTMLResponse("<h1>static/index.html 未找到</h1>")
+    return HTMLResponse("<h1>前端未构建，请先在 frontend/ 执行 npm run build</h1>", status_code=404)
 
 
 @app.get("/api/pages")
@@ -115,152 +126,176 @@ async def agent_reset(session_id: str = "default"):
     return {"session_id": session_id, "cleared": cleared}
 
 
-# ==================== 周报智能体 API ====================
+# ==================== 通用智能体对话（会话管理 + 上传 + 流式） ====================
 
 
-@app.post("/api/weekly/sessions")
-async def weekly_create_session():
-    """创建周报会话"""
-    session = create_session()
-    return session.to_dict()
+@app.post("/api/agent/sessions")
+async def agent_create_session():
+    """新建智能体对话会话"""
+    return create_agent_session()
 
 
-@app.get("/api/weekly/sessions")
-async def weekly_list_sessions():
-    """列出所有周报会话"""
-    return list_sessions()
+@app.get("/api/agent/sessions")
+async def agent_list_sessions():
+    """列出所有智能体对话会话（按更新时间倒序）"""
+    return list_agent_sessions()
 
 
-@app.get("/api/weekly/sessions/{session_id}")
-async def weekly_get_session(session_id: str):
-    """查询周报会话状态"""
-    session = get_session(session_id)
-    if not session:
+@app.get("/api/agent/sessions/{session_id}/messages")
+async def agent_get_messages(session_id: str):
+    """获取会话历史消息（前端加载历史对话用）"""
+    meta = get_agent_session(session_id)
+    if not meta:
         raise HTTPException(status_code=404, detail="会话不存在")
-    return session.to_dict()
+    return {
+        "session_id": session_id,
+        "meta": meta,
+        "messages": get_agent_messages(session_id),
+    }
 
 
-@app.post("/api/weekly/sessions/{session_id}/message")
-async def weekly_send_message(session_id: str, q: str):
-    """发送对话消息（非 SSE 流式版，一次返回完整结果）
+@app.delete("/api/agent/sessions/{session_id}")
+async def agent_delete_session(session_id: str):
+    """删除会话（元数据 + 历史 + 上传文件）"""
+    deleted = delete_agent_session(session_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    return {"session_id": session_id, "deleted": True}
 
-    SSE 流式版见 /api/weekly/sessions/{session_id}/message/stream
-    """
-    session = get_session(session_id)
-    if not session:
+
+@app.post("/api/agent/sessions/{session_id}/upload")
+async def agent_upload_file(session_id: str, file: UploadFile):
+    """上传文件到会话（白名单：docx/pdf/txt/xlsx/md）"""
+    meta = get_agent_session(session_id)
+    if not meta:
         raise HTTPException(status_code=404, detail="会话不存在")
     try:
-        result = await handle_session_message(session, q)
-        return result
+        return save_agent_upload(session_id, file)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/weekly/sessions/{session_id}/upload")
-async def weekly_upload_file(session_id: str, file: UploadFile):
-    """上传 Word 文件绑定到会话"""
-    session = get_session(session_id)
-    if not session:
+@app.get("/api/agent/sessions/{session_id}/files")
+async def agent_list_files(session_id: str):
+    """列出会话已上传文件"""
+    meta = get_agent_session(session_id)
+    if not meta:
         raise HTTPException(status_code=404, detail="会话不存在")
-    if not (file.filename or "").lower().endswith(".docx"):
-        raise HTTPException(status_code=400, detail="仅支持 .docx 文件")
+    return {"session_id": session_id, "files": list_agent_files(session_id)}
+
+
+@app.post("/api/agent/sessions/{session_id}/chat")
+async def agent_session_chat(session_id: str, q: str):
+    """智能体对话（一次性返回完整回答，兼容非流式客户端）"""
+    meta = get_agent_session(session_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="会话不存在")
     try:
-        path = await save_upload_file(session_id, file)
-        return {
-            "session_id": session_id,
-            "filename": path.name,
-            "path": str(path),
-            "size": path.stat().st_size,
-        }
+        answer = await run_agent_query(q, session_id=session_id)
+        return {"query": q, "session_id": session_id, "answer": answer}
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/weekly/sessions/{session_id}/draft")
-async def weekly_download_draft(session_id: str):
-    """下载当前会话的 xlsx 草稿"""
-    session = get_session(session_id)
-    if not session or not session.draft_xlsx_path:
-        raise HTTPException(status_code=404, detail="无草稿")
-    path = Path(session.draft_xlsx_path)
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="草稿文件不存在")
-    return FileResponse(
-        str(path),
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        filename=path.name,
+@app.post("/api/agent/sessions/{session_id}/chat/stream")
+async def agent_session_chat_stream(session_id: str, q: str):
+    """智能体对话（SSE 流式：思考中 → 工具调用 → 逐字回答）"""
+    meta = get_agent_session(session_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="消息不能为空")
+
+    return StreamingResponse(
+        stream_agent_query(q.strip(), session_id=session_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
-@app.post("/api/weekly/sessions/{session_id}/approve")
-async def weekly_approve_draft(session_id: str):
-    """审核通过，进入收件人收集"""
-    session = get_session(session_id)
-    if not session:
+@app.get("/api/agent/sessions/{session_id}/chat/sse")
+async def agent_session_chat_sse(session_id: str, q: str):
+    """智能体对话（SSE 流式，GET 方式，供前端 EventSource 使用）
+
+    与 POST /chat/stream 等价，但用 GET 以便前端使用原生 EventSource，
+    避免 fetch + ReadableStream 在 Chrome 中被中止的问题。
+    """
+    meta = get_agent_session(session_id)
+    if not meta:
         raise HTTPException(status_code=404, detail="会话不存在")
-    from week_agent.weekly_report.session import SessionState
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="消息不能为空")
 
-    if session.state != SessionState.REVIEWING:
-        raise HTTPException(status_code=400, detail=f"当前状态 {session.state.value} 不可审核")
-    session.transition(SessionState.COLLECTING_RECIPIENT)
-    return session.to_dict()
-
-
-@app.post("/api/weekly/sessions/{session_id}/reject")
-async def weekly_reject_draft(session_id: str, reason: str = ""):
-    """要求修改，带修改意见"""
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="会话不存在")
-    from week_agent.weekly_report.session import SessionState
-
-    session.transition(SessionState.DRAFTING)
-    if reason:
-        session.add_message("user", f"[要求修改] {reason}")
-    return session.to_dict()
+    return StreamingResponse(
+        stream_agent_query(q.strip(), session_id=session_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
-@app.post("/api/weekly/sessions/{session_id}/send")
-async def weekly_send_mail(session_id: str, to: str = ""):
-    """二次确认后真正发送邮件（通过 Agent 调用工具）"""
-    session = get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="会话不存在")
-    if to:
-        session.recipients = [e.strip() for e in to.split(",") if e.strip()]
-        session.save()
-    if not session.recipients:
-        raise HTTPException(status_code=400, detail="未提供收件人")
-    try:
-        result = await handle_session_message(
-            session,
-            f"请用 confirmation_token 发送邮件给: {', '.join(session.recipients)}",
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# ==================== 会话文件下载 ====================
 
 
-@app.get("/api/weekly/recipients")
-async def weekly_list_recipients():
-    """获取常用收件人列表"""
-    return list_recipients()
+@app.get("/api/agent/sessions/{session_id}/files/{filename}")
+async def agent_download_file(session_id: str, filename: str):
+    """下载会话内的文件（用户上传文件 / Agent 生成的周报草稿等）
 
+    支持两种来源：
+    - data/uploads/{session_id}/{filename}：用户上传的文件
+    - data/agent_outputs/{session_id}/{filename}：Agent 生成的文件（如周报 xlsx）
 
-@app.post("/api/weekly/recipients")
-async def weekly_add_recipient(name: str, email: str):
-    """新增常用收件人"""
-    if not email:
-        raise HTTPException(status_code=400, detail="email 不能为空")
-    return add_recipient(name or email.split("@")[0], email)
+    filename 不允许包含路径分隔符，防路径穿越。
+    """
+    safe_name = Path(filename).name
+    if safe_name != filename or ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="非法文件名")
 
-
-@app.delete("/api/weekly/recipients")
-async def weekly_remove_recipient(email: str):
-    """删除常用收件人"""
-    return remove_recipient(email)
+    # 候选目录：上传目录 + Agent 输出目录
+    candidates = [
+        DATA_DIR / "uploads" / session_id / safe_name,
+        DATA_DIR / "agent_outputs" / session_id / safe_name,
+        DATA_DIR / "drafts" / safe_name,  # 兼容历史草稿目录
+    ]
+    for p in candidates:
+        if p.exists() and p.is_file():
+            return FileResponse(
+                str(p),
+                filename=p.name,
+            )
+    raise HTTPException(status_code=404, detail="文件不存在")
 
 
 # 静态文件挂载
 STATIC_DIR.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.get("/{full_path:path}")
+async def spa_fallback(full_path: str):
+    """SPA history 路由 fallback：非 API、非 static 资源的请求回退到 index.html
+
+    顺序：FastAPI 按声明顺序匹配，此前已声明所有 /api/* 与 /static 挂载，
+    此 catch-all 仅兜底前端路由（如 /chat、/knowledge）。
+    """
+    # 已存在的精确文件直接返回（static 下的 js/css/图片等）
+    candidate = STATIC_DIR / full_path
+    if full_path and candidate.is_file():
+        return FileResponse(str(candidate))
+
+    # 其余前端路由回退到 index.html
+    html_path = STATIC_DIR / "index.html"
+    if html_path.exists():
+        return HTMLResponse(html_path.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>前端未构建</h1>", status_code=404)
