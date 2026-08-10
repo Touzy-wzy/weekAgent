@@ -73,9 +73,11 @@ def test_tool_parameters_schema():
     """测试工具参数 schema 正确"""
     list_tool = FlowUsListPagesTool()
     params = list_tool.get_parameters()
-    assert len(params) == 1
+    assert len(params) == 2
     assert params[0].name == "project_name"
     assert params[0].required
+    assert params[1].name == "max_depth"
+    assert not params[1].required  # 可选
 
     get_tool = FlowUsGetPageTool()
     params = get_tool.get_parameters()

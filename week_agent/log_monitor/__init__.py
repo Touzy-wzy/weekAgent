@@ -1,2 +1,4 @@
 # -*- coding: utf-8 -*-
 """日志监控智能体模块"""
+
+from .log_dedup import dedup_logs, TemplateCluster

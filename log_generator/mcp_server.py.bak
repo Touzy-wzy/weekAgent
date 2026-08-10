@@ -1,0 +1,100 @@
+# -*- coding: utf-8 -*-
+"""MCP Server - 纯 Resource 暴露日志数据，零 Tool
+
+对外提供:
+  Resource "log://files"               → 列出所有可用日志文件
+  Resource Template "log://{filename}"  → 读取指定日志文件内容
+
+客户端标识符: log_generator
+显示名称:     日志数据访问
+"""
+
+import os
+from pathlib import Path
+
+from mcp.server.fastmcp import FastMCP
+
+try:
+    from . import config
+    from .engine import LogGenerator
+except ImportError:
+    import config
+    from engine import LogGenerator
+
+# ---------------------------------------------------------------------------
+# FastMCP 实例
+# ---------------------------------------------------------------------------
+
+mcp = FastMCP(
+    "log_generator",
+    instructions=(
+        "日志数据访问服务。通过 resources/list 发现所有日志文件，"
+        "通过 resources/read 读取日志内容。"
+        "URI 格式: log://files (列出文件), log://{filename} (读取文件)"
+    ),
+    stateless_http=True,  # 禁用 OAuth，纯数据访问无需认证
+)
+
+# 共享的生成器实例（用于读取已生成的日志文件）
+_generator = LogGenerator()
+
+
+# ---------------------------------------------------------------------------
+# Resource: log://files - 列出所有日志文件
+# ---------------------------------------------------------------------------
+
+@mcp.resource("log://files")
+def list_log_files() -> str:
+    """列出所有可用的日志文件（名称、大小、修改时间）"""
+    files = _generator.list_files("*.log")
+    if not files:
+        return "（暂无日志文件，请先启动日志生成器: python run_generator.py）"
+
+    lines = [f"共 {len(files)} 个日志文件:"]
+    for i, f in enumerate(files, 1):
+        try:
+            stat = f.stat()
+            size_mb = stat.st_size / (1024 * 1024)
+            from datetime import datetime
+            mtime = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            lines.append(f"  {i}. {f.name}  ({size_mb:.1f}MB, {mtime})")
+        except OSError:
+            lines.append(f"  {i}. {f.name}")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Resource Template: log://{filename} - 读取指定日志文件
+# ---------------------------------------------------------------------------
+
+@mcp.resource("log://{filename}")
+def read_log_file(filename: str) -> str:
+    """读取指定日志文件的内容（末尾最多 500 行）
+
+    用法: resources/read uri="log://app_20260807_090000.log"
+    """
+    filepath = _generator.output_dir / filename
+
+    # 安全检查：防止路径穿越
+    safe_path = os.path.normpath(filepath)
+    safe_dir = os.path.normpath(str(_generator.output_dir))
+    if not safe_path.startswith(safe_dir):
+        raise ValueError(f"非法文件名: {filename}")
+
+    if not filepath.is_file():
+        # 尝试模糊匹配
+        matches = list(_generator.output_dir.glob(f"*{filename}*"))
+        if matches:
+            filepath = matches[0]
+        else:
+            available = [f.name for f in _generator.list_files("*.log")]
+            raise ValueError(
+                f"日志文件不存在: {filename}\n"
+                f"可用文件: {', '.join(available[:10]) or '（无）'}"
+            )
+
+    return _generator.read_file(
+        filename=filepath.name,
+        lines=config.MCP_READ_MAX_LINES,
+    )
